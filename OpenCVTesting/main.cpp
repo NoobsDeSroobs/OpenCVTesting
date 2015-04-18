@@ -1,4 +1,5 @@
 #include <opencv2\opencv.hpp>
+#include <opencv2\imgproc\imgproc.hpp>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <vector>
@@ -104,7 +105,7 @@ void DrawWithMask()
 {
 	cv::Mat LowerImage = cv::imread("E:/Dropbox/IMERSO/TestImLower.jpg");
 	cv::Mat Mask = cv::imread("E:/Dropbox/IMERSO/MaskGradient.jpg");
-	cv::cvtColor(Mask, Mask, CV_BGR2GRAY);
+	cv::cvtColor(Mask, Mask, cv::COLOR_BGR2GRAY);
 	cv::Mat UpperImage = cv::imread("D:/Music, vids and documents/Pics/ANIME/1273609 - Captain-T Elsa Frozen.jpg");
 
 	cv::Mat MaskedImage(LowerImage);
@@ -146,11 +147,49 @@ void DrawLine(cv::Mat& Img, Vector2D Start, Vector2D End)
 	}
 }
 
-void MitchellsMain()
+void MitchellVerticalGradiant(cv::Mat Img)
 {
-
+	float negroBabies = 0;
+	float increaseNegros = 255.0f / 200.0f;
+	int lowerLimit = 0;
+	int upperLimit = 600;
+	for (int i = 0; i < 600; i++) {
+		if (i >= lowerLimit && i <= upperLimit) {
+			negroBabies = negroBabies + increaseNegros;
+		}
+		for (int j = 0; j < 800; j++) {
+			Img.at<uchar>(i, j) = negroBabies;
+		}
+	}
 }
 
+void MitchellHorizontalGradiant(cv::Mat Img)
+{
+	float negroBabies = 0;
+	float increaseNegros = 255.0f / 800.0f;
+	for (int i = 0; i < 800; i++) {
+		negroBabies = negroBabies + increaseNegros;
+		for (int j = 0; j < 600; j++) {
+			Img.at<uchar>(j, i) = negroBabies;
+		}
+	}
+}
+
+void HorizontalOrVertical(cv::Mat Img, bool Horizontal)
+{
+	if (Horizontal) {
+		MitchellHorizontalGradiant(Img);
+	} else {
+		MitchellVerticalGradiant(Img);
+    }
+}
+
+void MitchellsMain()
+{
+	cv::Mat Img(600, 800, CV_8U);
+	HorizontalOrVertical(Img, false);
+	cv::imshow("MyWindow", Img);
+}
 
 int main()
 {
@@ -188,7 +227,7 @@ int main()
 
 	DrawLine(Img, Vector2D(Coords[0], Coords[1]), Vector2D(Coords[2], Coords[3]));
 	//cv::erode(Img, Img, cv::Mat());
-	cv::imshow("Window", Img);
+	//cv::imshow("Window", Img);
 	cv::waitKey(NULL);
 
 	return 0;
