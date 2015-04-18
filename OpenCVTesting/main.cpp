@@ -146,8 +146,15 @@ void DrawLine(cv::Mat& Img, Vector2D Start, Vector2D End)
 	}
 }
 
+void MitchellsMain()
+{
+
+}
+
+
 int main()
 {
+	MitchellsMain();
 	cv::Mat Img(M_PI * 200, 360 * 4, CV_8U);
 	for (int y = 0; y < Img.rows; y += 1) {
 		for (int x = 0; x < Img.cols; x++) {

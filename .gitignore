@@ -50,7 +50,7 @@
 #ipch/
 #*.aps
 #*.ncb
-#*.opensdf
+*.opensdf
 #*.sdf
 #*.cachefile
 
