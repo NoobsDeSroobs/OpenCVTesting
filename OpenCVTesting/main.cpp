@@ -34,7 +34,7 @@ void ExtractSubImages(const cv::Mat& SourceImage, size_t ImWidth, size_t ImHeigh
 	OutVector.push_back(SourceImage(cv::Rect(ImWidth / 2, ImHeight / 2, ImWidth / 2, ImHeight / 2)));
 }
 
-cv::Mat ComputeGLCM(const cv::Mat& Img, size_t DeltaX, size_t DeltaY)
+cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	int TotalMeasurements = 0;
 	cv::Mat dst(Img.cols, Img.rows, CV_8U);
@@ -49,15 +49,20 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, size_t DeltaX, size_t DeltaY)
 		}
 	}
 
-	
-	for (int y = 0; y < dst.rows - DeltaY; y++) {
-		for (int x = 0; x < dst.cols - DeltaX; x++) {
-			size_t GrayLevelBase = dst.at<uchar>(cv::Point(x, y));
-			size_t GrayLevelTarget = dst.at<uchar>(cv::Point(x + DeltaX, y + DeltaY));
+	//These magic numbers represent the max offset in both directions given the values above.
+	for (int y = 0; y < dst.rows - 3; y++) {
+		for (int x = 0; x < dst.cols - 3; x++) {
+			for (size_t i = 0; i < XYOffsets.size(); i+=2)
+			{
+				int deltaX = XYOffsets[i];
+				int deltaY = XYOffsets[i + 1];
+				size_t GrayLevelBase = dst.at<uchar>(cv::Point(x, y));
+				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(x + deltaX, y + deltaY));
 
-			GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
-			GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
-			TotalMeasurements = TotalMeasurements + 1;
+				GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
+				GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
+				TotalMeasurements = TotalMeasurements + 1;
+			}
 		}
 	}
 
@@ -140,7 +145,7 @@ float CalculateInertia(cv::Mat& GLCM){
 	return total;
 }
 
-std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img){
+std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffsets){
 	std::vector<cv::Mat> vecFeat;
 	vecFeat.reserve(3);
 
@@ -149,13 +154,16 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img){
 	cv::Mat ShadeFeatures(Img.cols, Img.rows, CV_32F);
 	int WindowSize = 17;
 
+
+	float RAvarage = 0, GAvarage = 0, BAvarage = 0;
+
 	for (size_t y = 0; y < Img.rows - WindowSize; y++)
 	{
 		for (size_t x = 0; x < Img.cols - WindowSize; x++)
 		{
 			std::cout << "Pos: " << x << "/" << y << std::endl;
 			cv::Mat Window = Img(cv::Rect(x, y, WindowSize, WindowSize));
-			cv::Mat GLCM = ComputeGLCM(Window, 3, 3);
+			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets);
 
 			float Homo = CalculateHomogeneity(GLCM);
 			float Inert = CalculateInertia(GLCM);
@@ -178,6 +186,7 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img){
 			float HomoPixel = HomoFeatures.at<float>(x, y);
 			float InertPixel = InertFeatures.at<float>(x, y);
 			float ShadePixel = ShadeFeatures.at<float>(x, y);
+
 			if (HomoPixel > RMax) RMax = HomoPixel;
 			if (InertPixel > GMax) GMax = InertPixel;
 			if (ShadePixel > BMax) BMax = ShadePixel;
@@ -201,6 +210,9 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img){
 			ShadePixel = (255.0f / BMax) * ShadePixel;
 			ShadeFeatures.at<float>(x, y) = ShadePixel;
 
+
+			RAvarage += HomoPixel; GAvarage += InertPixel; BAvarage += ShadePixel;
+
 		}
 	}
 	cv::Mat test(Img.cols, Img.rows, CV_8U);
@@ -221,9 +233,46 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img){
 	vecFeat.push_back(test2);
 	vecFeat.push_back(test3);
 
+	RAvarage = RAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
+	GAvarage = GAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
+	BAvarage = BAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
+
+	std::cout << "Homo avarage: " << RAvarage << "Inert avarage: " << GAvarage << "Shade avarage: " << BAvarage << std::endl;
+
 	return vecFeat;
 }
 
+std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs){
+	std::vector<cv::Mat> Masks;
+	
+	std::vector<uchar> Thresholds;
+	Thresholds.push_back(95);
+	Thresholds.push_back(91); // Was 54
+	Thresholds.push_back(87);
+	for (size_t i = 0; i < FeatImgs.size(); i++)
+	{
+		cv::Mat FeatImg = FeatImgs[i];
+		cv::Mat Mask(FeatImg.cols, FeatImg.rows, CV_8U);
+		uchar Threshold = Thresholds[i];
+		for (size_t y = 0; y < FeatImg.rows; y++)
+		{
+			for (size_t x = 0; x < FeatImg.cols; x++)
+			{
+				if (FeatImg.at<uchar>(x, y) > Threshold){
+					Mask.at<uchar>(x, y) = 255;
+				}else{
+					Mask.at<uchar>(x, y) = 0;
+				}
+			}
+		}
+		
+		Masks.push_back(Mask);
+
+	}
+
+	return Masks;
+
+}
 
 int main()
 {
@@ -250,16 +299,23 @@ int main()
 	cv::Mat ScaledImg;
 	cv::resize(BaseImage1, ScaledImg, cv::Size(BaseImage1.cols / 2, BaseImage1.rows / 2));
 
-	std::vector<cv::Mat> FeatImgs = PaintTransitionLines(BaseImage1);
+	std::vector<int> XYOffsets;
+	XYOffsets.push_back(0);
+	XYOffsets.push_back(3);
+	XYOffsets.push_back(3);
+	XYOffsets.push_back(0);
 
-	cv::imshow("Homo.", FeatImgs[0]);
-	cv::imshow("Inert.", FeatImgs[1]);
-	cv::imshow("Shade.", FeatImgs[2]);
+	std::vector<cv::Mat> FeatImgs = PaintTransitionLines(ScaledImg, XYOffsets);
+	std::vector<cv::Mat> FeatMasks = SegmentThresholdImage(FeatImgs);
+
+	cv::imshow("Homo.", FeatMasks[0]);
+	cv::imshow("Inert.", FeatMasks[1]);
+	cv::imshow("Shade.", FeatMasks[2]);
 	cv::waitKey(0);
 
 	for (size_t i = 0; i < 4; i++) {
 
-		cv::Mat GLCM = ComputeGLCM(SubImages1[i], 3, 0);
+		cv::Mat GLCM = ComputeGLCM(SubImages1[i], XYOffsets);
 		//PrintMat(GLCM);
 		std::cout << "Img " << i+1 << " has these values:" << std::endl;
 		std::cout << "    " << "Homogeneity: " << CalculateHomogeneity(GLCM) << std::endl;
@@ -267,10 +323,10 @@ int main()
 		std::cout << "    " << "Inertia: " << CalculateInertia(GLCM) << std::endl;
 	}
 
-	cv::imshow("Img1: ", SubImages1[0]);
-	cv::imshow("Img2: ", SubImages1[1]);
-	cv::imshow("Img3: ", SubImages1[2]);
-	cv::imshow("Img4: ", SubImages1[3]);
+	cv::imshow("Img1: ", SubImages2[0]);
+	cv::imshow("Img2: ", SubImages2[1]);
+	cv::imshow("Img3: ", SubImages2[2]);
+	cv::imshow("Img4: ", SubImages2[3]);
 
 	cv::waitKey(0);
 	return 0;
