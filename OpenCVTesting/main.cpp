@@ -37,7 +37,7 @@ void ExtractSubImages(const cv::Mat& SourceImage, size_t ImWidth, size_t ImHeigh
 cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	int TotalMeasurements = 0;
-	cv::Mat dst(Img.cols, Img.rows, CV_8U);
+	cv::Mat dst(Img.cols, Img.rows, CV_8UC1);
 	cv::resize(Img, dst, cv::Size(dst.cols, dst.rows), 0, 0, CV_INTER_CUBIC);
 	int NumGrayLevels = 32;
 	ReduceGrayLevels(dst, NumGrayLevels);
@@ -145,26 +145,25 @@ float CalculateInertia(cv::Mat& GLCM){
 	return total;
 }
 
-std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffsets){
+std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, std::vector<float>& Avarages){
 	std::vector<cv::Mat> vecFeat;
 	vecFeat.reserve(3);
 
 	cv::Mat HomoFeatures(Img.cols, Img.rows, CV_32F);
 	cv::Mat InertFeatures(Img.cols, Img.rows, CV_32F);
 	cv::Mat ShadeFeatures(Img.cols, Img.rows, CV_32F);
-	int WindowSize = 17;
+	int WindowSize = 35;
 
 
 	float RAvarage = 0, GAvarage = 0, BAvarage = 0;
 
 	for (size_t y = 0; y < Img.rows - WindowSize; y++)
 	{
+		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = 0; x < Img.cols - WindowSize; x++)
 		{
-			std::cout << "Pos: " << x << "/" << y << std::endl;
 			cv::Mat Window = Img(cv::Rect(x, y, WindowSize, WindowSize));
 			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets);
-
 			float Homo = CalculateHomogeneity(GLCM);
 			float Inert = CalculateInertia(GLCM);
 			float Shade = abs(CalculateClusterShade(GLCM));
@@ -180,9 +179,9 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffse
 
 	for (size_t y = (WindowSize / 2)+1; y < Img.rows - (WindowSize / 2)-1; y++)
 	{
+		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = (WindowSize / 2)+1; x < Img.cols - (WindowSize / 2)-1; x++)
 		{
-			std::cout << "Pos: " << x << "/" << y << std::endl;
 			float HomoPixel = HomoFeatures.at<float>(x, y);
 			float InertPixel = InertFeatures.at<float>(x, y);
 			float ShadePixel = ShadeFeatures.at<float>(x, y);
@@ -195,9 +194,9 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffse
 
 	for (size_t y = (WindowSize / 2) + 1; y < Img.rows - (WindowSize / 2) - 1; y++)
 	{
+		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = (WindowSize / 2) + 1; x < Img.cols - (WindowSize / 2) - 1; x++)
 		{
-			std::cout << "Pos: " << x << "/" << y << std::endl;
 			float HomoPixel = HomoFeatures.at<float>(x, y);
 			HomoPixel = (255.0f / RMax) * HomoPixel;
 			HomoFeatures.at<float>(x, y) = HomoPixel;
@@ -215,9 +214,9 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffse
 
 		}
 	}
-	cv::Mat test(Img.cols, Img.rows, CV_8U);
-	cv::Mat test2(Img.cols, Img.rows, CV_8U);
-	cv::Mat test3(Img.cols, Img.rows, CV_8U);
+	cv::Mat test(Img.cols, Img.rows, CV_8UC1);
+	cv::Mat test2(Img.cols, Img.rows, CV_8UC1);
+	cv::Mat test3(Img.cols, Img.rows, CV_8UC1);
 	for (size_t y = (WindowSize / 2) + 1; y < Img.rows - (WindowSize / 2) - 1; y++)
 	{
 		for (size_t x = (WindowSize / 2) + 1; x < Img.cols - (WindowSize / 2) - 1; x++)
@@ -236,23 +235,20 @@ std::vector<cv::Mat> PaintTransitionLines(cv::Mat& Img, std::vector<int> XYOffse
 	RAvarage = RAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
 	GAvarage = GAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
 	BAvarage = BAvarage / ((Img.rows - WindowSize)*(Img.cols - WindowSize));
-
+	Avarages.push_back(RAvarage);
+	Avarages.push_back(GAvarage);
+	Avarages.push_back(BAvarage);
 	std::cout << "Homo avarage: " << RAvarage << "Inert avarage: " << GAvarage << "Shade avarage: " << BAvarage << std::endl;
 
 	return vecFeat;
 }
 
-std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs){
+std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs, std::vector<float>& Thresholds){
 	std::vector<cv::Mat> Masks;
-	
-	std::vector<uchar> Thresholds;
-	Thresholds.push_back(95);
-	Thresholds.push_back(91); // Was 54
-	Thresholds.push_back(87);
 	for (size_t i = 0; i < FeatImgs.size(); i++)
 	{
 		cv::Mat FeatImg = FeatImgs[i];
-		cv::Mat Mask(FeatImg.cols, FeatImg.rows, CV_8U);
+		cv::Mat Mask(FeatImg.cols, FeatImg.rows, CV_8UC1);
 		uchar Threshold = Thresholds[i];
 		for (size_t y = 0; y < FeatImg.rows; y++)
 		{
@@ -277,14 +273,14 @@ std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs){
 int main()
 {
 
-	cv::Mat BaseImage1 = cv::imread("mosaic1.png", CV_LOAD_IMAGE_GRAYSCALE);
-	if (!BaseImage1.data)// Check for invalid input
+	cv::Mat BaseImage2 = cv::imread("mosaic1.png", CV_LOAD_IMAGE_GRAYSCALE);
+	if (!BaseImage2.data)// Check for invalid input
 	{
 		std::cout << "Could not open or find the image" << std::endl;
 		return -1;
 	}
-	cv::Mat BaseImage2 = cv::imread("mosaic2.png", CV_LOAD_IMAGE_GRAYSCALE);
-	if (!BaseImage2.data)// Check for invalid input
+	cv::Mat BaseImage1 = cv::imread("mosaic2.png", CV_LOAD_IMAGE_GRAYSCALE);
+	if (!BaseImage1.data)// Check for invalid input
 	{
 		std::cout << "Could not open or find the image" << std::endl;
 		return -1;
@@ -297,7 +293,7 @@ int main()
 	ExtractSubImages(BaseImage2, BaseImage2.cols, BaseImage2.rows, SubImages2);
 
 	cv::Mat ScaledImg;
-	cv::resize(BaseImage1, ScaledImg, cv::Size(BaseImage1.cols / 2, BaseImage1.rows / 2));
+	cv::resize(BaseImage1, ScaledImg, cv::Size(BaseImage1.cols / 1, BaseImage1.rows / 1));
 
 	std::vector<int> XYOffsets;
 	XYOffsets.push_back(0);
@@ -305,13 +301,27 @@ int main()
 	XYOffsets.push_back(3);
 	XYOffsets.push_back(0);
 
-	std::vector<cv::Mat> FeatImgs = PaintTransitionLines(ScaledImg, XYOffsets);
-	std::vector<cv::Mat> FeatMasks = SegmentThresholdImage(FeatImgs);
+	//std::vector<float> Avarages;
+	//std::vector<cv::Mat> FeatImgs = ComputeFeatures(ScaledImg, XYOffsets, Avarages);
+	//std::vector<cv::Mat> FeatMasks = SegmentThresholdImage(FeatImgs, Avarages);
+	//cv::Mat finalImage;
+	//cv::merge(FeatMasks, finalImage);
+	//cv::Mat ColourImg;
+	//cv::cvtColor(ScaledImg, ColourImg, CV_GRAY2BGR);
+	//ColourImg = ColourImg * 0.6 + finalImage * 0.4;
 
-	cv::imshow("Homo.", FeatMasks[0]);
-	cv::imshow("Inert.", FeatMasks[1]);
-	cv::imshow("Shade.", FeatMasks[2]);
-	cv::waitKey(0);
+	//cv::imshow("Homo.", FeatMasks[0]);
+	//cv::imshow("Inert.", FeatMasks[1]);
+	//cv::imshow("Shade.", FeatMasks[2]);
+	//cv::imshow("Overlay.", ColourImg);
+	//cv::imshow("Masks as RGB.", finalImage);
+
+
+	//cv::imwrite("HomoI1S35.jpg", FeatMasks[0]);
+	//cv::imwrite("InertI1S35.jpg", FeatMasks[1]);
+	//cv::imwrite("ShadeI1S35.jpg", FeatMasks[2]);
+	//cv::imwrite("OverlayI1S35.jpg", ColourImg);
+	//cv::imwrite("Masks as RGBI1S35.jpg", finalImage);
 
 	for (size_t i = 0; i < 4; i++) {
 
@@ -323,10 +333,10 @@ int main()
 		std::cout << "    " << "Inertia: " << CalculateInertia(GLCM) << std::endl;
 	}
 
-	cv::imshow("Img1: ", SubImages2[0]);
-	cv::imshow("Img2: ", SubImages2[1]);
-	cv::imshow("Img3: ", SubImages2[2]);
-	cv::imshow("Img4: ", SubImages2[3]);
+	cv::imshow("Img1: ", SubImages1[0]);
+	cv::imshow("Img2: ", SubImages1[1]);
+	cv::imshow("Img3: ", SubImages1[2]);
+	cv::imshow("Img4: ", SubImages1[3]);
 
 	cv::waitKey(0);
 	return 0;
