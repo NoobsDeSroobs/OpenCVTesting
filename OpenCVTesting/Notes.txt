@@ -1,0 +1,4 @@
+Implement the univariate gaussian distribution algorithm. 
+
+For each pixel
+    
