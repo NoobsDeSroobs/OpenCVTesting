@@ -272,7 +272,7 @@ std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs, std::v
 
 int main()
 {
-	return 0;
+	
 	cv::Mat BaseImage2 = cv::imread("mosaic1.png", CV_LOAD_IMAGE_GRAYSCALE);
 	if (!BaseImage2.data)// Check for invalid input
 	{
