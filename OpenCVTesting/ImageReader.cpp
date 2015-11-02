@@ -25,7 +25,13 @@ cv::Mat ReadImageFromTXT(std::string path)
 				line.erase(0, pos + delimiter.length());
 			}
 			y++;
+			x = 0;
 		}
+
+		//This will, hopefully, reduce the size to the image size.
+		Image.resize(y);
+		Image.colRange(0, x);
+		
 		backstory.close();
 	} else {
 		std::cout << "Unable to open file" << std::endl << std::endl;
