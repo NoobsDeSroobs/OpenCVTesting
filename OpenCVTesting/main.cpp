@@ -330,7 +330,7 @@ int main()
 	//cv::imwrite("Masks as RGBI1S35.jpg", finalImage);
 
 	for (size_t i = 0; i < 4; i++) {
-
+		
 		cv::Mat GLCM = ComputeGLCM(SubImages1[i], XYOffsets);
 		//PrintMat(GLCM);
 		std::cout << "Img " << i+1 << " has these values:" << std::endl;

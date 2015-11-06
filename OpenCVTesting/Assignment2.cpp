@@ -62,6 +62,14 @@ void StartAssignment2()
 
 	cv::imshow("Like This?", test);*/
 	cv::waitKey();
+
+	//Collect the data as normal using the two directions I select and store it in a GLCM.
+	//Calculate the features, Q1 to Qn.
+	//Use the test mask to generate a descriptor using the N means of the N features for all M classes. We should have M descriptors now.
+	//Use the function cv::calcCovarMatrix() to calculate the covariance matrix for each class descriptor.
+	//Us ethe function given in the book to calculate the probability of a pixel being class 1...M. Select the one with the highest probability.
+	//
+
 }
 
 float ComputeFeature(cv::Mat GLCM, size_t start_x_t, size_t end_x_t, size_t start_y_t, size_t end_y_t)
