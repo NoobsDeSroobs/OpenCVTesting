@@ -3,6 +3,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <vector>
+#include "ImageReader.h"
+#include "Assignment2.h"
 
 void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels)
 {
@@ -45,7 +47,7 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 	cv::Mat GLCM(NumGrayLevels, NumGrayLevels, CV_32F);
 	for (int y = 0; y < GLCM.rows; y++) {
 		for (int x = 0; x < GLCM.cols; x++) {
-				GLCM.at<float>(x, y) = 0.0f;
+				GLCM.at<float>(y, x) = 0.0f;
 		}
 	}
 
@@ -56,8 +58,8 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 			{
 				int deltaX = XYOffsets[i];
 				int deltaY = XYOffsets[i + 1];
-				size_t GrayLevelBase = dst.at<uchar>(cv::Point(x, y));
-				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(x + deltaX, y + deltaY));
+				size_t GrayLevelBase = dst.at<uchar>(cv::Point(y, x));
+				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
 
 				GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
 				GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
@@ -68,7 +70,7 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 
 	for (int y = 0; y < GLCM.rows; y++) {
 		for (int x = 0; x < GLCM.cols; x++) {
-			GLCM.at<float>(x, y) = GLCM.at<float>(x, y) / TotalMeasurements;
+			GLCM.at<float>(y, x) = GLCM.at<float>(y, x) / TotalMeasurements;
 		}
 	}
 
@@ -96,7 +98,7 @@ float CalculateHomogeneity(cv::Mat& GLCM)
 	{
 		for (size_t x = 0; x < GLCM.cols; x++)
 		{
-			float dividend = GLCM.at<float>(x, y);
+			float dividend = GLCM.at<float>(y, x);
 			float divisor = (1 + ((x - y) * (x - y)));
 
 			total += dividend / divisor;
@@ -125,7 +127,7 @@ float CalculateClusterShade(cv::Mat& GLCM){
 		for (size_t x = 0; x < GLCM.cols; x++)
 		{
 			float val = x + y - ux - uy;
-			total += val * val * val * GLCM.at<float>(x, y);
+			total += val * val * val * GLCM.at<float>(y, x);
  		}
 	}
 
@@ -139,7 +141,7 @@ float CalculateInertia(cv::Mat& GLCM){
 	{
 		for (size_t x = 0; x < GLCM.cols; x++)
 		{
-			total += ((x - y)*(x - y)) * GLCM.at<float>(x, y);
+			total += ((x - y)*(x - y)) * GLCM.at<float>(y, x);
 		}
 	}
 	return total;
@@ -162,7 +164,7 @@ std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, 
 		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = 0; x < Img.cols - WindowSize; x++)
 		{
-			cv::Mat Window = Img(cv::Rect(x, y, WindowSize, WindowSize));
+			cv::Mat Window = Img(cv::Rect(y, x, WindowSize, WindowSize));
 			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets);
 			float Homo = CalculateHomogeneity(GLCM);
 			float Inert = CalculateInertia(GLCM);
@@ -182,9 +184,9 @@ std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, 
 		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = (WindowSize / 2)+1; x < Img.cols - (WindowSize / 2)-1; x++)
 		{
-			float HomoPixel = HomoFeatures.at<float>(x, y);
-			float InertPixel = InertFeatures.at<float>(x, y);
-			float ShadePixel = ShadeFeatures.at<float>(x, y);
+			float HomoPixel = HomoFeatures.at<float>(y, x);
+			float InertPixel = InertFeatures.at<float>(y, x);
+			float ShadePixel = ShadeFeatures.at<float>(y, x);
 
 			if (HomoPixel > RMax) RMax = HomoPixel;
 			if (InertPixel > GMax) GMax = InertPixel;
@@ -197,17 +199,17 @@ std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, 
 		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = (WindowSize / 2) + 1; x < Img.cols - (WindowSize / 2) - 1; x++)
 		{
-			float HomoPixel = HomoFeatures.at<float>(x, y);
+			float HomoPixel = HomoFeatures.at<float>(y, x);
 			HomoPixel = (255.0f / RMax) * HomoPixel;
-			HomoFeatures.at<float>(x, y) = HomoPixel;
+			HomoFeatures.at<float>(y, x) = HomoPixel;
 	
-			float InertPixel = InertFeatures.at<float>(x, y);
+			float InertPixel = InertFeatures.at<float>(y, x);
 			InertPixel = (255.0f / GMax) * InertPixel;
-			InertFeatures.at<float>(x, y) = InertPixel;
+			InertFeatures.at<float>(y, x) = InertPixel;
 
-			float ShadePixel = ShadeFeatures.at<float>(x, y);
+			float ShadePixel = ShadeFeatures.at<float>(y, x);
 			ShadePixel = (255.0f / BMax) * ShadePixel;
-			ShadeFeatures.at<float>(x, y) = ShadePixel;
+			ShadeFeatures.at<float>(y, x) = ShadePixel;
 
 
 			RAvarage += HomoPixel; GAvarage += InertPixel; BAvarage += ShadePixel;
@@ -221,9 +223,9 @@ std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, 
 	{
 		for (size_t x = (WindowSize / 2) + 1; x < Img.cols - (WindowSize / 2) - 1; x++)
 		{
-			test.at<uchar>(x, y) = (uchar)HomoFeatures.at<float>(x, y);
-			test2.at<uchar>(x, y) = (uchar)InertFeatures.at<float>(x, y);
-			test3.at<uchar>(x, y) = (uchar)ShadeFeatures.at<float>(x, y);
+			test.at<uchar>(y, x) = (uchar)HomoFeatures.at<float>(y, x);
+			test2.at<uchar>(y, x) = (uchar)InertFeatures.at<float>(y, x);
+			test3.at<uchar>(y, x) = (uchar)ShadeFeatures.at<float>(y, x);
 
 		}
 	}
@@ -254,10 +256,10 @@ std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs, std::v
 		{
 			for (size_t x = 0; x < FeatImg.cols; x++)
 			{
-				if (FeatImg.at<uchar>(x, y) > Threshold){
-					Mask.at<uchar>(x, y) = 255;
+				if (FeatImg.at<uchar>(y, x) > Threshold){
+					Mask.at<uchar>(y, x) = 255;
 				}else{
-					Mask.at<uchar>(x, y) = 0;
+					Mask.at<uchar>(y, x) = 0;
 				}
 			}
 		}
@@ -270,9 +272,13 @@ std::vector<cv::Mat> SegmentThresholdImage(std::vector<cv::Mat> FeatImgs, std::v
 
 }
 
+
+
+
 int main()
 {
-	
+	StartAssignment2();
+	return 0;
 	cv::Mat BaseImage2 = cv::imread("mosaic1.png", CV_LOAD_IMAGE_GRAYSCALE);
 	if (!BaseImage2.data)// Check for invalid input
 	{
