@@ -89,3 +89,4 @@ cv::Mat ReadImageFromTXT(std::string path)
 
 	return ConvertedImage;
 }
+

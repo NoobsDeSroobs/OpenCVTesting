@@ -5,28 +5,28 @@
 #include <vector>
 #include "ImageReader.h"
 #include "Assignment2.h"
-
-void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels)
-{
-	int numBitsToShift = 0;
-	uchar b = 0-1;
-	while (b > numGrayLevels-1) {
-		b = b >> 1;
-		numBitsToShift++;
-	}
-
-	int height = Img.rows;
-	int width = Img.cols;
-
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			uchar oldVal = Img.at<uchar>(y, x);
-			uchar newVal = oldVal >> numBitsToShift;
-			Img.at<uchar>(y, x) = newVal;
-		}
-	}
-}
-
+//
+//void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels)
+//{
+//	int numBitsToShift = 0;
+//	uchar b = 0-1;
+//	while (b > numGrayLevels-1) {
+//		b = b >> 1;
+//		numBitsToShift++;
+//	}
+//
+//	int height = Img.rows;
+//	int width = Img.cols;
+//
+//	for (int y = 0; y < height; y++) {
+//		for (int x = 0; x < width; x++) {
+//			uchar oldVal = Img.at<uchar>(y, x);
+//			uchar newVal = oldVal >> numBitsToShift;
+//			Img.at<uchar>(y, x) = newVal;
+//		}
+//	}
+//}
+//
 
 void ExtractSubImages(const cv::Mat& SourceImage, size_t ImWidth, size_t ImHeight, std::vector<cv::Mat>& OutVector)
 {
@@ -35,47 +35,47 @@ void ExtractSubImages(const cv::Mat& SourceImage, size_t ImWidth, size_t ImHeigh
 	OutVector.push_back(SourceImage(cv::Rect(0, ImHeight / 2, ImWidth / 2, ImHeight / 2)));
 	OutVector.push_back(SourceImage(cv::Rect(ImWidth / 2, ImHeight / 2, ImWidth / 2, ImHeight / 2)));
 }
-
-cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
-{
-	int TotalMeasurements = 0;
-	cv::Mat dst(Img.cols, Img.rows, CV_8UC1);
-	cv::resize(Img, dst, cv::Size(dst.cols, dst.rows), 0, 0, CV_INTER_CUBIC);
-	int NumGrayLevels = 32;
-	ReduceGrayLevels(dst, NumGrayLevels);
-
-	cv::Mat GLCM(NumGrayLevels, NumGrayLevels, CV_32F);
-	for (int y = 0; y < GLCM.rows; y++) {
-		for (int x = 0; x < GLCM.cols; x++) {
-				GLCM.at<float>(y, x) = 0.0f;
-		}
-	}
-
-	//These magic numbers represent the max offset in both directions given the values above.
-	for (int y = 0; y < dst.rows - 3; y++) {
-		for (int x = 0; x < dst.cols - 3; x++) {
-			for (size_t i = 0; i < XYOffsets.size(); i+=2)
-			{
-				int deltaX = XYOffsets[i];
-				int deltaY = XYOffsets[i + 1];
-				size_t GrayLevelBase = dst.at<uchar>(cv::Point(y, x));
-				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
-
-				GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
-				GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
-				TotalMeasurements = TotalMeasurements + 1;
-			}
-		}
-	}
-
-	for (int y = 0; y < GLCM.rows; y++) {
-		for (int x = 0; x < GLCM.cols; x++) {
-			GLCM.at<float>(y, x) = GLCM.at<float>(y, x) / TotalMeasurements;
-		}
-	}
-
-	return GLCM;
-}
+//
+//cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
+//{
+//	int TotalMeasurements = 0;
+//	cv::Mat dst(Img.cols, Img.rows, CV_8UC1);
+//	cv::resize(Img, dst, cv::Size(dst.cols, dst.rows), 0, 0, CV_INTER_CUBIC);
+//	int NumGrayLevels = 32;
+//	ReduceGrayLevels(dst, NumGrayLevels);
+//
+//	cv::Mat GLCM(NumGrayLevels, NumGrayLevels, CV_32F);
+//	for (int y = 0; y < GLCM.rows; y++) {
+//		for (int x = 0; x < GLCM.cols; x++) {
+//				GLCM.at<float>(y, x) = 0.0f;
+//		}
+//	}
+//
+//	//These magic numbers represent the max offset in both directions given the values above.
+//	for (int y = 0; y < dst.rows - 3; y++) {
+//		for (int x = 0; x < dst.cols - 3; x++) {
+//			for (size_t i = 0; i < XYOffsets.size(); i+=2)
+//			{
+//				int deltaX = XYOffsets[i];
+//				int deltaY = XYOffsets[i + 1];
+//				size_t GrayLevelBase = dst.at<uchar>(cv::Point(y, x));
+//				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
+//
+//				GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
+//				GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
+//				TotalMeasurements = TotalMeasurements + 1;
+//			}
+//		}
+//	}
+//
+//	for (int y = 0; y < GLCM.rows; y++) {
+//		for (int x = 0; x < GLCM.cols; x++) {
+//			GLCM.at<float>(y, x) = GLCM.at<float>(y, x) / TotalMeasurements;
+//		}
+//	}
+//
+//	return GLCM;
+//}
 
 void PrintMat(const cv::Mat& Img){
 	for (int y = 0; y < Img.rows; y++) {
