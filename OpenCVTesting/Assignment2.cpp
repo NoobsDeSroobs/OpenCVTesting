@@ -1,5 +1,7 @@
 #include "Assignment2.h"
 #include "ImageReader.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 float ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage)
 {
@@ -35,9 +37,21 @@ float ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage
 }
 
 
-void MultivariateGaussian()
+void MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors, std::vector<cv::Mat> CovarMats)
 {
-	//cv::calcCovarMatrix();
+	//Generate feature imgs. Store each pixel into an array called X;
+
+
+	std::vector<float> ProbabilityForClass(Descriptors.size());
+	float d = Descriptors.size();
+	cv::Mat x(d, 1, CV_32F);
+	//FeatureImgs.at<float>(0, 0);
+	cv::Mat sigma = CovarMats[0];
+	float scalar = 1 / (pow(2 * M_PI, d / 2)* pow(d, 0.5f));
+	cv::Mat exponent = -0.5f * (x - Descriptors[0].Descriptor) * sigma.inv() * (x - Descriptors[0].Descriptor);
+
+	float Probability = scalar* exp(exponent.at<float>(0, 0));
+
 }
 
 
@@ -91,7 +105,7 @@ void StartAssignment2()
 	//Classification
 	//Use the function given in the book to calculate the probability of a pixel being class 1...M. Select the one with the highest probability. 
 	//Input is the image, the class descriptors and the covariance matrices.
-	//
+	MultivariateGaussian(Img, Descriptors, CovarMats);
 
 }
 

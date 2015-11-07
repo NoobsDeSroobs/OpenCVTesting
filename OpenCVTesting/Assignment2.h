@@ -4,7 +4,7 @@
 #include "ClassDescriptor.h"
 
 //Classify using the multivariate gaussian. 
-void MultivariateGaussian();
+void MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors, std::vector<cv::Mat> CovarMats);
 //Calculate the confusion matrix.
 float  ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage);
 
