@@ -165,7 +165,7 @@ std::vector<cv::Mat> ComputeFeatures(cv::Mat& Img, std::vector<int>& XYOffsets, 
 		for (size_t x = 0; x < Img.cols - WindowSize; x++)
 		{
 			cv::Mat Window = Img(cv::Rect(y, x, WindowSize, WindowSize));
-			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets);
+			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets)[0];
 			float Homo = CalculateHomogeneity(GLCM);
 			float Inert = CalculateInertia(GLCM);
 			float Shade = abs(CalculateClusterShade(GLCM));
@@ -331,7 +331,7 @@ int main()
 
 	for (size_t i = 0; i < 4; i++) {
 		
-		cv::Mat GLCM = ComputeGLCM(SubImages1[i], XYOffsets);
+		cv::Mat GLCM = ComputeGLCM(SubImages1[i], XYOffsets)[0];
 		//PrintMat(GLCM);
 		std::cout << "Img " << i+1 << " has these values:" << std::endl;
 		std::cout << "    " << "Homogeneity: " << CalculateHomogeneity(GLCM) << std::endl;

@@ -14,7 +14,7 @@ float ComputeQFeature(cv::Mat GLCM, size_t start_x_t, size_t end_x_t, size_t sta
 //Compute all QFeatures for the GLCM.
 std::vector<float> ComputeQFeatures(cv::Mat GLCM);
 //Compute the GLCM for the current image. It is not normalized.
-cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets);
+std::vector<cv::Mat> ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets);
 //Reduce the graylevels of the image to fit the GLCM.
 void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels);
 

@@ -62,13 +62,13 @@ cv::Mat ReadImageFromTXT(std::string path)
 		}
 	}
 
-	for (size_t y = 0; y < FinalImage.rows; y++) {
+	/*for (size_t y = 0; y < FinalImage.rows; y++) {
 		for (size_t x = 0; x < FinalImage.cols; x++) {
 			float Pixel = FinalImage.at<float>(y, x);
 			Pixel = (Pixel / Max)*255;
 			FinalImage.at<float>(y, x) = Pixel;
 		}
-	}
+	}*/
 
 
 	cv::Mat ConvertedImage(FinalImage.rows, FinalImage.cols, CV_8U);
@@ -85,7 +85,7 @@ cv::Mat ReadImageFromTXT(std::string path)
 
 
 
-	cv::resize(ConvertedImage, ConvertedImage, cv::Size(720, 720));
+	cv::resize(ConvertedImage, ConvertedImage, cv::Size(100, 100));
 
 	return ConvertedImage;
 }

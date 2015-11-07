@@ -42,21 +42,44 @@ void MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors,
 	//Generate feature imgs. Store each pixel into an array called X;
 
 
-	std::vector<float> ProbabilityForClass(Descriptors.size());
 	float d = Descriptors.size();
-	cv::Mat x(d, 1, CV_32F);
-	//FeatureImgs.at<float>(0, 0);
-	cv::Mat sigma = CovarMats[0];
-	float scalar = 1 / (pow(2 * M_PI, d / 2)* pow(d, 0.5f));
-	cv::Mat exponent = -0.5f * (x - Descriptors[0].Descriptor) * sigma.inv() * (x - Descriptors[0].Descriptor);
+	cv::Mat ClassificationMask(Img.rows, Img.cols, CV_8U);
+	for (size_t y_t = 0; y_t < Img.rows; y_t++) {
+		for (size_t x_t = 0; x_t < Img.cols; x_t++) {
 
-	float Probability = scalar* exp(exponent.at<float>(0, 0));
+			std::vector<float> ProbabilityForClass(d);
+			//Calculate the probability for all the classes. 
+			for (size_t i = 0; i < d + 1; i++) {
+				cv::Mat x(d, 1, CV_32F);
+				//FeatureImgs.at<float>(0, 0);
+				cv::Mat sigma = CovarMats[0];
+				float scalar = 1 / (pow(2 * M_PI, d / 2)* pow(d, 0.5f));
+				cv::Mat exponent = -0.5f * (x - Descriptors[0].Descriptor) * sigma.inv() * (x - Descriptors[0].Descriptor);
 
+				float Probability = scalar* exp(exponent.at<float>(0, 0));
+				ProbabilityForClass[i] = Probability;
+			}
+
+			int MostProbableClass = -1;
+			float maxProbability = 0;
+			for (size_t i = 0; i < ProbabilityForClass.size(); i++) {
+				float currentClassProbability = ProbabilityForClass[i];
+				if (currentClassProbability > maxProbability) {
+					maxProbability = currentClassProbability;
+					MostProbableClass = i;
+				}
+			}
+
+			ClassificationMask.at<uchar>(y_t, x_t) = MostProbableClass;
+		}
+	}
+	
 }
 
 
 void StartAssignment2()
 {
+	/*
 	std::vector<cv::Mat> GLCM;
 	GLCM.push_back(ReadImageFromTXT("texture1dx0dy1.txt"));
 	GLCM.push_back(ReadImageFromTXT("texture1dx1dy0.txt"));
@@ -78,9 +101,7 @@ void StartAssignment2()
 	GLCM.push_back(ReadImageFromTXT("texture4dx1dy-1.txt"));
 	GLCM.push_back(ReadImageFromTXT("texture4dx-1dy1.txt"));
 	
-
-	cv::Mat TrainingMask = ReadImageFromTXT("training_mask.txt");
-	
+		
 	bool success;
 	success = cv::imwrite("Images/texture1dx0dy1.png" , GLCM[0]);
 	success = cv::imwrite("Images/texture1dx1dy0.png" , GLCM[1]);
@@ -101,31 +122,29 @@ void StartAssignment2()
 	success = cv::imwrite("Images/texture4dx1dy0.png" , GLCM[13]);
 	success = cv::imwrite("Images/texture4dx1dy-1.png", GLCM[14]);
 	success = cv::imwrite("Images/texture4dx-1dy1.png", GLCM[15]);
+	*/
 	
 
-	cv::imshow("TestMask", TrainingMask);
-	/*
-	cv::Mat test = ReadImageFromTXT("mosaic1_train.txt");
-	cv::line(test, cv::Point(test.cols / 2, 0), cv::Point(test.cols / 2, test.rows), cv::Scalar::all(255));
-	cv::line(test, cv::Point(0, test.cols / 2), cv::Point(test.cols, test.cols / 2), cv::Scalar::all(255));
+	cv::Mat TrainingMask = ReadImageFromTXT("training_mask.txt");
 
-	cv::imshow("Like This?", test);*/
-	cv::waitKey();
-
-	cv::Mat Img;
+	cv::Mat Img = ReadImageFromTXT("Mosaic1_train.txt");
 	std::vector<int> offsets;
+	//Direction 1
 	offsets.push_back(1);
 	offsets.push_back(0);
-	offsets.push_back(0);
+	//Direction 2
+	offsets.push_back(1);
 	offsets.push_back(1);
 
 	//Img = GLCM1[0];
 
 	//Training
-	//Collect the data as normal using the two directions I select and store it in a GLCM.
-	//cv::Mat GLCM = ComputeGLCM(Img, offsets);
 	//Calculate the features, Q1 to Qn.
 	std::vector<cv::Mat> QFeatImgs = ComputeQFeatureImgs(Img, offsets);
+	for (size_t i = 0; i < QFeatImgs.size(); i++) {
+		cv::imshow("FeatureImage", QFeatImgs[i]);
+		cv::waitKey();
+	}
 	//Use the test mask to generate a descriptor using the N means of the N features for all M classes. We should have M descriptors now.
 	std::vector<ClassDescriptor> Descriptors = ComputeClassDescriptors(QFeatImgs, TrainingMask);
 	//Use the function cv::calcCovarMatrix() to calculate the covariance matrix for each class descriptor.
@@ -144,6 +163,7 @@ void StartAssignment2()
 
 float ComputeQFeature(cv::Mat GLCM, size_t start_x_t, size_t end_x_t, size_t start_y_t, size_t end_y_t)
 {
+	//std::cout << "X: " << start_x_t << " - " << end_x_t << " Y: " << start_y_t << " - " << end_y_t << std::endl;
 	float Q = 0;
 	float SubSum = 0;
 	float TotalSum = 0;
@@ -187,7 +207,7 @@ std::vector<float> ComputeQFeatures(cv::Mat GLCM)
 	return Qs;
 }
 
-cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
+std::vector<cv::Mat> ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	int TotalMeasurements = 0;
 	cv::Mat dst(Img.cols, Img.rows, CV_8UC1);
@@ -196,13 +216,11 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 	ReduceGrayLevels(dst, NumGrayLevels);
 
 	//Create and zero out matrix. I know I could use Zeroes.
-	cv::Mat GLCM(NumGrayLevels, NumGrayLevels, CV_32F);
-	for (int y = 0; y < GLCM.rows; y++) {
-		for (int x = 0; x < GLCM.cols; x++) {
-			GLCM.at<float>(y, x) = 0.0f;
-		}
+	std::vector<cv::Mat> GLCMs;
+	for (size_t i = 0; i < XYOffsets.size()/2; i++) {
+		GLCMs.push_back(cv::Mat::zeros(NumGrayLevels, NumGrayLevels, CV_32F));
 	}
-
+	
 	//These offsets represent the max offset in both directions given the values above.
 	for (size_t i = 0; i < XYOffsets.size(); i += 2) {
 		for (int y = 0; y < dst.rows - XYOffsets[i + 1]; y++) {
@@ -212,8 +230,8 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 				size_t GrayLevelBase = dst.at<uchar>(cv::Point(y, x));
 				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
 
-				GLCM.at<float>(GrayLevelBase, GrayLevelTarget) += 1;
-				GLCM.at<float>(GrayLevelTarget, GrayLevelBase) += 1;
+				GLCMs[i/2].at<float>(GrayLevelBase, GrayLevelTarget) += 1;
+				GLCMs[i/2].at<float>(GrayLevelTarget, GrayLevelBase) += 1;
 				TotalMeasurements = TotalMeasurements + 1;
 			}
 		}
@@ -224,7 +242,7 @@ cv::Mat ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 		}
 	}*/
 
-	return GLCM;
+	return GLCMs;
 }
 void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels)
 {
@@ -255,14 +273,14 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 	size_t numClasses = 0;
 	for (size_t y_t = 0; y_t < mask.rows; y_t++) {
 		for (size_t x_t = 0; x_t < mask.cols; x_t++) {
-			size_t currentClassID = mask.at<float>(y_t, x_t);
+			size_t currentClassID = mask.at<uchar>(y_t, x_t);
 			if (currentClassID > numClasses) numClasses = currentClassID;
 		}
 	}
 
 	
 	//Create the descriptors.
-	for (size_t i = 0; i < numClasses; i++)
+	for (size_t i = 0; i < numClasses+1; i++)
 	{
 		descriptors.push_back(ClassDescriptor(featureImgs.size()));
 	}
@@ -272,7 +290,7 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 	for (size_t y_t = 0; y_t < mask.rows; y_t++) {
 		for (size_t x_t = 0; x_t < mask.cols; x_t++) {
 
-			int classID = mask.at<size_t>(y_t, x_t);
+			int classID = mask.at<uchar>(y_t, x_t);
 			std::vector<float> pixelFeatures;
 			for (size_t i = 0; i < featureImgs.size(); i++) {
 				//Extract all features for the pixel
@@ -293,7 +311,7 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	//TODO Figure out how to determine the size of this vector.
-	std::vector<cv::Mat> QFeatureIms;
+	std::vector<cv::Mat> QFeatureIms(/*(XYOffsets.size()/2)*/4, cv::Mat(Img.rows, Img.cols, CV_32F));
 	int WindowSize = 31;
 
 
@@ -301,16 +319,17 @@ std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffset
 		std::cout << "Pos: " << y << std::endl;
 		for (size_t x = 0; x < Img.cols - WindowSize; x++) {
 			cv::Mat Window = Img(cv::Rect(y, x, WindowSize, WindowSize));
-			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets);
+			cv::Mat GLCM = ComputeGLCM(Window, XYOffsets)[1];
+			//Compute the QFeatures for thew 4 parts.
 			std::vector<float> QFeats = ComputeQFeatures(GLCM);
 
+			std::cout << "";
+			//For every computed Q feature set the pixel on the matching Q feature image.
 			for (size_t i = 0; i < QFeatureIms.size(); i++) {
-				QFeatureIms[i].at<float>(x + 1 + (WindowSize / 2), y + 1 + (WindowSize / 2)) = QFeats[i];
+				QFeatureIms[i].at<float>(y + 1 + (WindowSize / 2), x + 1 + (WindowSize / 2)) = QFeats[i];
 			}
 		}
 	}
-
-	
 
 	return QFeatureIms;
 }
