@@ -57,19 +57,53 @@ void MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors,
 
 void StartAssignment2()
 {
-	std::vector<cv::Mat> GLCM1;
-	std::vector<cv::Mat> GLCM2;
-	GLCM1.push_back(ReadImageFromTXT("texture1dx0dy1.txt"));
-	GLCM1.push_back(ReadImageFromTXT("texture2dx0dy1.txt"));
-	GLCM1.push_back(ReadImageFromTXT("texture3dx0dy1.txt"));
-	GLCM1.push_back(ReadImageFromTXT("texture4dx0dy1.txt"));
+	std::vector<cv::Mat> GLCM;
+	GLCM.push_back(ReadImageFromTXT("texture1dx0dy1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture1dx1dy0.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture1dx1dy-1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture1dx-1dy1.txt"));
 
-	GLCM2.push_back(ReadImageFromTXT("texture1dx1dy0.txt"));
-	GLCM2.push_back(ReadImageFromTXT("texture2dx1dy0.txt"));
-	GLCM2.push_back(ReadImageFromTXT("texture3dx1dy0.txt"));
-	GLCM2.push_back(ReadImageFromTXT("texture4dx1dy0.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture2dx0dy1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture2dx1dy0.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture2dx1dy-1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture2dx-1dy1.txt"));
+
+	GLCM.push_back(ReadImageFromTXT("texture3dx0dy1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture3dx1dy0.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture3dx1dy-1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture3dx-1dy1.txt"));
+
+	GLCM.push_back(ReadImageFromTXT("texture4dx0dy1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture4dx1dy0.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture4dx1dy-1.txt"));
+	GLCM.push_back(ReadImageFromTXT("texture4dx-1dy1.txt"));
+	
 
 	cv::Mat TrainingMask = ReadImageFromTXT("training_mask.txt");
+	bool success;
+	success = cv::imwrite("Images/texture1dx0dy1.png" , GLCM[0]);
+	success = cv::imwrite("Images/texture1dx1dy0.png" , GLCM[1]);
+	success = cv::imwrite("Images/texture1dx1dy-1.png", GLCM[2]);
+	success = cv::imwrite("Images/texture1dx-1dy1.png", GLCM[3]);
+								 
+	success = cv::imwrite("Images/texture2dx0dy1.png" , GLCM[4]);
+	success = cv::imwrite("Images/texture2dx1dy0.png" , GLCM[5]);
+	success = cv::imwrite("Images/texture2dx1dy-1.png", GLCM[6]);
+	success = cv::imwrite("Images/texture2dx-1dy1.png", GLCM[7]);
+							 
+	success = cv::imwrite("Images/texture3dx0dy1.png" , GLCM[8]);
+	success = cv::imwrite("Images/texture3dx1dy0.png" , GLCM[9]);
+	success = cv::imwrite("Images/texture3dx1dy-1.png", GLCM[10]);
+	success = cv::imwrite("Images/texture3dx-1dy1.png", GLCM[11]);
+							 
+	success = cv::imwrite("Images/texture4dx0dy1.png" , GLCM[12]);
+	success = cv::imwrite("Images/texture4dx1dy0.png" , GLCM[13]);
+	success = cv::imwrite("Images/texture4dx1dy-1.png", GLCM[14]);
+	success = cv::imwrite("Images/texture4dx-1dy1.png", GLCM[15]);
+	
+
+	return;
+
 	cv::imshow("TestMask", TrainingMask);
 	/*
 	cv::Mat test = ReadImageFromTXT("mosaic1_train.txt");
@@ -86,7 +120,7 @@ void StartAssignment2()
 	offsets.push_back(0);
 	offsets.push_back(1);
 
-	Img = GLCM1[0];
+	//Img = GLCM1[0];
 
 	//Training
 	//Collect the data as normal using the two directions I select and store it in a GLCM.
@@ -280,4 +314,22 @@ std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffset
 	
 
 	return QFeatureIms;
+}
+
+void NormalizeMat(cv::Mat& mat)
+{
+	float max = 0;
+	for (size_t y = 0; y < mat.rows; y++) {
+		for (size_t x = 0; x < mat.cols; x++) {
+			if (max < mat.at<float>(y, x)) max = mat.at<float>(y, x);
+		}
+	}
+
+	for (size_t y = 0; y < mat.rows; y++) {
+		for (size_t x = 0; x < mat.cols; x++) {
+			mat.at<float>(y, x) = (mat.at<float>(y, x) / max) * 255;
+		}
+	}
+
+
 }

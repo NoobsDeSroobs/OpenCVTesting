@@ -21,3 +21,5 @@ void ReduceGrayLevels(cv::Mat& Img, int numGrayLevels);
 std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featureImgs, cv::Mat& mask);
 
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets);
+
+void NormalizeMat(cv::Mat& mat);
