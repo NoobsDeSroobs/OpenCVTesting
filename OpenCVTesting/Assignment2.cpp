@@ -80,6 +80,7 @@ void StartAssignment2()
 	
 
 	cv::Mat TrainingMask = ReadImageFromTXT("training_mask.txt");
+	
 	bool success;
 	success = cv::imwrite("Images/texture1dx0dy1.png" , GLCM[0]);
 	success = cv::imwrite("Images/texture1dx1dy0.png" , GLCM[1]);
@@ -101,8 +102,6 @@ void StartAssignment2()
 	success = cv::imwrite("Images/texture4dx1dy-1.png", GLCM[14]);
 	success = cv::imwrite("Images/texture4dx-1dy1.png", GLCM[15]);
 	
-
-	return;
 
 	cv::imshow("TestMask", TrainingMask);
 	/*
