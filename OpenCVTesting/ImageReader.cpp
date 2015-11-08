@@ -85,7 +85,7 @@ cv::Mat ReadImageFromTXT(std::string path)
 
 
 
-	cv::resize(ConvertedImage, ConvertedImage, cv::Size(100, 100));
+	cv::resize(ConvertedImage, ConvertedImage, cv::Size(720, 720));
 
 	return ConvertedImage;
 }

@@ -5,19 +5,20 @@
 class ClassDescriptor
 {
 public:
-	std::vector<int> numClassPixels;
+	std::vector<int> numPerFeature;
 	cv::Mat Descriptor;
 	size_t num_features_t_;
+	size_t classID;
 
-	explicit ClassDescriptor(size_t num_features_t)
-		: num_features_t_(num_features_t)
+	explicit ClassDescriptor(size_t num_features_t, size_t classID)
+		: num_features_t_(num_features_t), classID(classID)
 	{
-		numClassPixels.resize(num_features_t_, 0);
+		numPerFeature.resize(num_features_t_, 0);
 		Descriptor = cv::Mat(num_features_t_, 1, CV_32F);
 	}
 
-	void addPixel(std::vector<float> pixelFeatures);
-
+	bool sum(std::vector<float> xes);
+	void addPixel(std::vector<float>& pixelFeatures);
 	void CalculateDescriptor();
 	
 };
