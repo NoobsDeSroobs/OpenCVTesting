@@ -28,7 +28,6 @@ cv::Mat ReadImageFromTXT(std::string path)
 				float value = std::stoi(token);
 				Image.at<float>(y, x) = value;
 				x++;
-				//std::cout << token << std::endl;
 				line.erase(0, pos + delimiter.length());
 			}
 
@@ -54,7 +53,7 @@ cv::Mat ReadImageFromTXT(std::string path)
 
 	float Max = 0;
 
-	for (size_t y = 0; y < FinalImage.rows; y++) {
+	/*for (size_t y = 0; y < FinalImage.rows; y++) {
 		for (size_t x = 0; x < FinalImage.cols; x++) {
 			float Pixel = FinalImage.at<float>(y, x);
 
@@ -62,7 +61,7 @@ cv::Mat ReadImageFromTXT(std::string path)
 		}
 	}
 
-	/*for (size_t y = 0; y < FinalImage.rows; y++) {
+	for (size_t y = 0; y < FinalImage.rows; y++) {
 		for (size_t x = 0; x < FinalImage.cols; x++) {
 			float Pixel = FinalImage.at<float>(y, x);
 			Pixel = (Pixel / Max)*255;
@@ -77,7 +76,13 @@ cv::Mat ReadImageFromTXT(std::string path)
 	{
 		for (int j = 0; j < ConvertedImage.cols; j++)
 		{
-			ConvertedImage.at<uchar>(i, j) = static_cast<uchar>(FinalImage.at<float>(i, j));
+			float pixelVal = FinalImage.at<float>(i, j);
+			short classVal = static_cast<short>(pixelVal);
+			if (std::strcmp(path.c_str(), "training_mask.txt") == 0 && classVal > 4) {
+				classVal = 0; //Hack to fix a problem with the code. Line 511 fucks up it seems.
+				std::cout << "Pos: " << i << "/" << j << std::endl;
+			}
+			ConvertedImage.at<uchar>(i, j) = classVal;
 			//std::cout << ConvertedImage.at<uchar>(i, j)+48 << std::endl;
 		}
 	}
@@ -85,7 +90,7 @@ cv::Mat ReadImageFromTXT(std::string path)
 
 
 
-	cv::resize(ConvertedImage, ConvertedImage, cv::Size(720, 720));
+	//cv::resize(ConvertedImage, ConvertedImage, cv::Size(720, 720));
 
 	return ConvertedImage;
 }

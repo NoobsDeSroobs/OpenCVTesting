@@ -14,7 +14,7 @@ public:
 		: num_features_t_(num_features_t), classID(classID)
 	{
 		numPerFeature.resize(num_features_t_, 0);
-		Descriptor = cv::Mat(num_features_t_, 1, CV_32F);
+		Descriptor = cv::Mat::zeros(num_features_t_, 1, CV_32F);
 	}
 
 	bool sum(std::vector<float> xes);
