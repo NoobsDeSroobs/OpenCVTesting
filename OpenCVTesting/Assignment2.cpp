@@ -140,10 +140,13 @@ void StartAssignment2()
 	//Calculate the features, Q1 to Qn.
 	std::vector<cv::Mat> QFeatImgs = ComputeQFeatureImgs(TrainingImg, offsets);
 
-	/*for (size_t i = 0; i < QFeatImgs.size(); i++) {
+	for (size_t i = 0; i < QFeatImgs.size(); i++) {
+		std::cout << QFeatImgs[i].at<float>(0, 0);
+		std::cout << QFeatImgs[i].at<float>(300, 250);
 		cv::imshow("FeatureImage", QFeatImgs[i]);
 		cv::waitKey();
-	}*/
+	}
+	
 	//Use the test mask to generate a descriptor using the N means of the N features for all M classes. We should have M descriptors now.
 	std::vector<ClassDescriptor> Descriptors = ComputeClassDescriptors(QFeatImgs, TrainingMask);
 	//Use the function cv::calcCovarMatrix() to calculate the covariance matrix for each class descriptor.
@@ -154,8 +157,19 @@ void StartAssignment2()
 
 	//Calculate the new feature imgs.
 	QFeatImgs = ComputeQFeatureImgs(TrainingImg, offsets);
+
+	for (size_t i = 0; i < QFeatImgs.size(); i++) {
+		std::cout << QFeatImgs[i].at<float>(0, 0);
+		std::cout << QFeatImgs[i].at<float>(300, 250);
+		cv::imshow("FeatureImage", QFeatImgs[i]);
+		cv::waitKey();
+	}
+
 	std::vector<cv::Mat> CovarMats;
-	CovarMats.resize(Descriptors.size(), cv::Mat(Descriptors.size(), Descriptors.size(), CV_32F));
+	for (size_t i = 0; i < Descriptors.size(); i++) {
+		CovarMats.push_back(cv::Mat(Descriptors.size(), Descriptors.size(), CV_32F));
+	}
+	
 	for (size_t i = 0; i < Descriptors.size(); i++) {
 		cv::calcCovarMatrix(QFeatImgs, CovarMats[i], Descriptors[i].Descriptor, CV_COVAR_NORMAL);
 	}
@@ -244,7 +258,7 @@ std::vector<cv::Mat> ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
 
 				GLCMs[i/2].at<float>(GrayLevelBase, GrayLevelTarget) += 1;
-				//GLCMs[i/2].at<float>(GrayLevelTarget, GrayLevelBase) += 1;
+				GLCMs[i/2].at<float>(GrayLevelTarget, GrayLevelBase) += 1;
 				TotalMeasurements = TotalMeasurements + 1;
 			}
 		}
@@ -332,7 +346,10 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	//TODO Figure out how to determine the size of this vector.
-	std::vector<cv::Mat> QFeatureIms((XYOffsets.size()/2)*4, cv::Mat(Img.rows, Img.cols, CV_32F));
+	std::vector<cv::Mat> QFeatureIms;
+	for (size_t i = 0; i < (XYOffsets.size() / 2) * 4; i++) {
+		QFeatureIms.push_back(cv::Mat(Img.rows, Img.cols, CV_32F));
+	}
 	for (size_t i = 0; i < QFeatureIms.size(); i++)
 	{
 		for (size_t y_t = 0; y_t < QFeatureIms[i].rows; y_t++)
@@ -366,11 +383,13 @@ std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffset
 
 			//For every computed Q feature set the pixel on the matching Q feature image.
 			for (size_t i = 0; i < QFeatureIms.size(); i++) {
-				QFeatureIms[i].at<float>(y + 1 + (WindowSize / 2), x + 1 + (WindowSize / 2)) = QFeats[i];
+				float value = QFeats[i];
+				cv::Mat currentFeatureImg = QFeatureIms[i];
+				currentFeatureImg.at<float>(y + 1 + (WindowSize / 2), x + 1 + (WindowSize / 2)) = value;
 			}
 		}
 	}
-
+	
 	return QFeatureIms;
 }
 
