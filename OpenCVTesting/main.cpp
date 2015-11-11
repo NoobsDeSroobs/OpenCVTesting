@@ -77,19 +77,6 @@ void ExtractSubImages(const cv::Mat& SourceImage, size_t ImWidth, size_t ImHeigh
 //	return GLCM;
 //}
 
-void PrintMat(const cv::Mat& Img){
-	for (int y = 0; y < Img.rows; y++) {
-		std::cout << "|";
-		for (int x = 0; x < Img.cols; x++) {
-			std::cout << "|" << Img.at<float>(y, x);
-		}
-		std::cout << "|" << std::endl;
-		for (int x = 0; x < Img.cols; x++) {
-			std::cout << "--";
-		}
-		std::cout << "|" << std::endl;
-	}
-}
 
 float CalculateHomogeneity(cv::Mat& GLCM)
 {

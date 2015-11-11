@@ -22,6 +22,23 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets);
 
-void NormalizeMat(cv::Mat& mat);
+cv::Mat NormalizeMat(cv::Mat& mat);
 
 cv::Mat getPixelDescriptor(std::vector<cv::Mat>& featureImgs, size_t y, size_t x);
+
+inline void PrintMat(const cv::Mat& Img)
+{
+	for (int y = 0; y < Img.rows; y++) {
+		std::cout << "|";
+		for (int x = 0; x < Img.cols; x++) {
+			std::cout << "|" << Img.at<float>(y, x);
+		}
+		std::cout << "|" << std::endl;
+		for (int x = 0; x < Img.cols; x++) {
+			std::cout << "--";
+		}
+		std::cout << "|" << std::endl;
+	}
+}
+
+std::vector<std::vector<std::vector<float>>> computeSamples(cv::Mat& mask, std::vector<cv::Mat>& featureImgs);
