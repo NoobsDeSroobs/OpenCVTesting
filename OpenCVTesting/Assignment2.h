@@ -4,7 +4,7 @@
 #include "ClassDescriptor.h"
 
 //Classify using the multivariate gaussian. 
-cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors, std::vector<cv::Mat> CovarMats);
+cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor>& Descriptors, std::vector<cv::Mat>& CovarMats, std::vector<cv::Mat>& featureImgs);
 //Calculate the confusion matrix.
 float  ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage);
 
@@ -23,3 +23,5 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets);
 
 void NormalizeMat(cv::Mat& mat);
+
+cv::Mat getPixelDescriptor(std::vector<cv::Mat>& featureImgs, size_t y, size_t x);

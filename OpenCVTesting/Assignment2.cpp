@@ -16,6 +16,7 @@ float ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage
 		}
 	}
 
+	// ReSharper disable once CppInitializedValueIsAlwaysRewritten
 	float Accuracy = -1;
 
 	float Total = 0;
@@ -37,10 +38,10 @@ float ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage
 }
 
 
-cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descriptors, std::vector<cv::Mat> CovarMats)
+cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor>& Descriptors, std::vector<cv::Mat>& CovarMats, std::vector<cv::Mat>& featureImgs)
 {
 
-	float d = Descriptors.size();
+	float d = Descriptors[0].num_features_t_;
 	cv::Mat ClassificationMask(Img.rows, Img.cols, CV_8U);
 	for (size_t y_t = 0; y_t < Img.rows; y_t++) {
 		for (size_t x_t = 0; x_t < Img.cols; x_t++) {
@@ -48,11 +49,23 @@ cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor> Descripto
 			std::vector<float> ProbabilityForClass(d);
 			//Calculate the probability for all the classes. 
 			for (size_t i = 0; i < d + 1; i++) {
-				cv::Mat x(d, 1, CV_32F);
+				cv::Mat x = getPixelDescriptor(featureImgs, y_t, x_t);
 				//FeatureImgs.at<float>(0, 0);
-				cv::Mat sigma = CovarMats[0];
+				cv::Mat sigma = CovarMats[i];
 				float scalar = 1 / (pow(2 * M_PI, d / 2)* pow(d, 0.5f));
-				cv::Mat exponent = -0.5f * (x - Descriptors[0].Descriptor) * sigma.inv() * (x - Descriptors[0].Descriptor);
+				cv::Mat descriptor = Descriptors[i].Descriptor;
+				
+				std::cout << "Dims:" << x.dims << ", cols:" << x.cols << ", Rows:" << x.rows << "\n";
+				std::cout << "Dims:" << descriptor.dims << ", cols:" << descriptor.cols << ", Rows:" << descriptor.rows << "\n";
+				cv::Mat temp;
+				cv::subtract(x, descriptor, temp, cv::Mat(), CV_32F);
+				cv::Mat tempT(temp.t());
+				cv::Mat t2(temp.t());
+				sigma.inv();
+				cv::multiply(sigma.inv(), temp, t2, 1, CV_32F);
+				cv::Mat t3;
+				cv::multiply(tempT, t2, t3, 1, CV_32F);
+				cv::Mat exponent = -0.5f * temp;
 
 				float Probability = scalar* exp(exponent.at<float>(0, 0));
 				ProbabilityForClass[i] = Probability;
@@ -140,12 +153,12 @@ void StartAssignment2()
 	//Calculate the features, Q1 to Qn.
 	std::vector<cv::Mat> QFeatImgs = ComputeQFeatureImgs(TrainingImg, offsets);
 
-	for (size_t i = 0; i < QFeatImgs.size(); i++) {
+	/*for (size_t i = 0; i < QFeatImgs.size(); i++) {
 		std::cout << QFeatImgs[i].at<float>(0, 0);
 		std::cout << QFeatImgs[i].at<float>(300, 250);
 		cv::imshow("FeatureImage", QFeatImgs[i]);
 		cv::waitKey();
-	}
+	}*/
 	
 	//Use the test mask to generate a descriptor using the N means of the N features for all M classes. We should have M descriptors now.
 	std::vector<ClassDescriptor> Descriptors = ComputeClassDescriptors(QFeatImgs, TrainingMask);
@@ -158,12 +171,12 @@ void StartAssignment2()
 	//Calculate the new feature imgs.
 	QFeatImgs = ComputeQFeatureImgs(TrainingImg, offsets);
 
-	for (size_t i = 0; i < QFeatImgs.size(); i++) {
+	/*for (size_t i = 0; i < QFeatImgs.size(); i++) {
 		std::cout << QFeatImgs[i].at<float>(0, 0);
 		std::cout << QFeatImgs[i].at<float>(300, 250);
 		cv::imshow("FeatureImage", QFeatImgs[i]);
 		cv::waitKey();
-	}
+	}*/
 
 	std::vector<cv::Mat> CovarMats;
 	for (size_t i = 0; i < Descriptors.size(); i++) {
@@ -171,14 +184,14 @@ void StartAssignment2()
 	}
 	
 	for (size_t i = 0; i < Descriptors.size(); i++) {
-		cv::calcCovarMatrix(QFeatImgs, CovarMats[i], Descriptors[i].Descriptor, CV_COVAR_NORMAL);
+		cv::calcCovarMatrix(Descriptors[i].Descriptor, CovarMats[i], Descriptors[i].Descriptor, CV_COVAR_NORMAL | CV_COVAR_COLS);
 	}
 	//Generate feature imgs. Store each pixel into an array called X;
 	//Compute the QFeature
 	//Calculate descriptor from the QFeature images.
 	//Use the function given in the book to calculate the probability of a pixel being class 1...M. Select the one with the highest probability. 
 	//Input is the image, the class descriptors and the covariance matrices.
-	cv::Mat classifiedImage = MultivariateGaussian(ImgTOClassify, Descriptors, CovarMats);
+	cv::Mat classifiedImage = MultivariateGaussian(ImgTOClassify, Descriptors, CovarMats, QFeatImgs);
 
 	float accuracy = ConfusionMatrix(TrainingMask, classifiedImage);
 
@@ -189,6 +202,7 @@ void StartAssignment2()
 float ComputeQFeature(cv::Mat GLCM, size_t start_x_t, size_t end_x_t, size_t start_y_t, size_t end_y_t)
 {
 	//std::cout << "X: " << start_x_t << " - " << end_x_t << " Y: " << start_y_t << " - " << end_y_t << std::endl;
+	// ReSharper disable once CppInitializedValueIsAlwaysRewritten
 	float Q = 0;
 	float SubSum = 0;
 	float TotalSum = 0;
@@ -222,9 +236,9 @@ std::vector<float> ComputeQFeatures(std::vector<cv::Mat> GLCMs)
 		size_t wStep = width_t / 2;
 		size_t hStep = height_t / 2;
 
-		for (size_t i = 0; i < 2; i++) {
+		for (size_t u = 0; u < 2; u++) {
 			for (size_t j = 0; j < 2; j++) {
-				size_t startX = wStep*j, endX = wStep + wStep*j, startY = hStep*i, endY = hStep + hStep*i;
+				size_t startX = wStep*j, endX = wStep + wStep*j, startY = hStep*u, endY = hStep + hStep*u;
 
 				float Q = ComputeQFeature(GLCM, startX, endX, startY, endY);
 				Qs.push_back(Q);
@@ -409,4 +423,16 @@ void NormalizeMat(cv::Mat& mat)
 	}
 
 
+}
+
+cv::Mat getPixelDescriptor(std::vector<cv::Mat>& featureImgs, size_t y, size_t x)
+{
+	int d = featureImgs.size();
+	cv::Mat descriptor(d, 1, CV_32F);
+
+	for (size_t i = 0; i < d; i++) {
+		descriptor.at<float>(i, 0) = featureImgs[i].at<float>(y, x);
+	}
+
+	return descriptor;
 }
