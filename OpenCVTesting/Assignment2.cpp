@@ -37,38 +37,101 @@ float ConfusionMatrix(const cv::Mat& GroundTruth, const cv::Mat& ClassifiedImage
 	return Accuracy;
 }
 
+cv::Mat CalcCovarMatrix(std::vector<std::vector<float>>& samples, cv::Mat& mean, int d)
+{
+	//Each element in the samples vector is all the samples from one feature.
+	
+	cv::Mat Sigma = cv::Mat::zeros(d, d, CV_32F);
+
+	for (size_t featIter1 = 0; featIter1 < d; featIter1++) {
+		for (size_t featIter2 = 0; featIter2 < d; featIter2++) {
+
+			float total = 0;
+			int numMeasurements = 0;
+			int feature1 = featIter1;
+			int feature2 = featIter2;
+			//The means for the current two classes.
+			float mean1 = mean.at<float>(feature1, 0);
+			float mean2 = mean.at<float>(feature2, 0);
+			for (size_t x_t = 0; x_t < samples[feature1].size(); x_t++) {
+				//All the samples for each class.
+				float x1 = samples[feature1][x_t];
+				float x2 = samples[feature2][x_t];
+				numMeasurements++;
+				//Sum 
+				total += (x1 - mean1)*(x2 - mean2);
+			}
+			float covariance = total / (numMeasurements-1);
+			//Now add the covariance to the matrix.
+			Sigma.at<float>(feature1, feature2) = covariance;
+		}
+	}
+
+	return Sigma;
+}
 
 cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor>& Descriptors, std::vector<std::vector<std::vector<float>>>& samples, std::vector<cv::Mat>& featureImgs)
 {
-
+	int numClasses = 4;
 	cv::Mat ClassificationMask(Img.rows, Img.cols, CV_8U);
-	for (size_t y_t = 0; y_t < Img.rows; y_t++) {
-		for (size_t x_t = 0; x_t < Img.cols; x_t++) {
+	std::vector<cv::Mat> ProbabilityForClass(numClasses);
+	for (size_t i = 0; i < numClasses; i++) {
+		ProbabilityForClass[i] = cv::Mat::zeros(Img.rows, Img.cols, CV_32F);
+	}
 
-			float d = Descriptors.size();
-			std::vector<float> ProbabilityForClass(d, 0);
-			//Calculate the probability for all the classes. 
-			for (size_t i = 1; i < d; i++) {
+	for (size_t i = 0; i < numClasses; i++) {
+		float d = Descriptors[0].num_features_t_;
+		cv::Mat myu = Descriptors[i].Descriptor;
+		cv::Mat sigma;
+		std::vector<std::vector<float>> S = samples[i];
+		//cv::calcCovarMatrix(S, sigma, myu, CV_COVAR_ROWS, CV_32F);
+		sigma = CalcCovarMatrix(S, myu, d);
+
+
+		for (size_t y_t = 0; y_t < Img.rows; y_t++) {
+			std::cout << "Calculating probability row " << y_t << std::endl;
+			for (size_t x_t = 0; x_t < Img.cols; x_t++) {
+
+				//Calculate the probability for all the classes. 
 				cv::Mat x = getPixelDescriptor(featureImgs, y_t, x_t);
-				cv::Mat myu = Descriptors[i].Descriptor;
-				cv::Mat sigma;
-				cv::calcCovarMatrix(x, sigma, myu, CV_COVAR_NORMAL | CV_COVAR_COLS, CV_32F);
+			
+					
+					//PrintMat(sigma);
+					//std::cout << "\n\n";
+
+
+				float n = 4; //What is this? Num classes it seems.
 				if (x.rows != myu.rows || x.rows != sigma.rows)
 					std::cout << "Something bad happened as the vectors x and myu and the matrix sigma does not match.";
-				float scalar = 1 / (pow(2 * M_PI, d / 2)* pow(d, 0.5f));
+
+				float detSigma = cv::determinant(sigma);
+				float scalar = 1 / (pow(2 * M_PI, n / 2) * pow(cv::determinant(sigma), 0.5f));
 				
 				cv::Mat difference;
 				cv::subtract(x, myu, difference, cv::Mat(), CV_32F);
 				cv::Mat exponent = -0.5f * difference.t() * sigma.inv() * difference;
 
 				float Probability = scalar * exp(exponent.at<float>(0, 0));
-				ProbabilityForClass[i] = Probability;
+				if (Probability > 90000.0f) {
+					PrintMat(sigma);
+					std::cout << "Infinite probability detected." << std::endl;
+				}
+				ProbabilityForClass[i].at<float>(y_t, x_t) = Probability;
 			}
+		}
+		cv::imshow("Probability image", 64*ProbabilityForClass[i]);
+		cv::waitKey();
+	}
 
-			int MostProbableClass = -1;
+
+	for (size_t y_t = 0; y_t < Img.rows; y_t++) {
+		std::cout << "Classified row " << y_t << std::endl;
+		for (size_t x_t = 0; x_t < Img.cols; x_t++) {
+			int MostProbableClass = 0;
 			float maxProbability = 0;
 			for (size_t i = 0; i < ProbabilityForClass.size(); i++) {
-				float currentClassProbability = ProbabilityForClass[i];
+				float currentClassProbability = ProbabilityForClass[i].at<float>(y_t, x_t);
+			
 				if (currentClassProbability > maxProbability) {
 					maxProbability = currentClassProbability;
 					MostProbableClass = i;
@@ -78,6 +141,7 @@ cv::Mat MultivariateGaussian(cv::Mat Img, std::vector<ClassDescriptor>& Descript
 			ClassificationMask.at<uchar>(y_t, x_t) = MostProbableClass;
 		}
 	}
+
 	return ClassificationMask;
 }
 
@@ -92,7 +156,7 @@ void StartAssignment2()
 	offsets.push_back(1);
 	offsets.push_back(0);
 	//Direction 2
-	offsets.push_back(0);
+	offsets.push_back(1);
 	offsets.push_back(1);
 
 	//Training
@@ -118,8 +182,10 @@ void StartAssignment2()
 	//Input is the image, the class descriptors and the covariance matrices.
 	auto samples = computeSamples(TrainingMask, QFeatImgs);
 	cv::Mat classifiedImage = MultivariateGaussian(ImgTOClassify, Descriptors, samples, QFeatImgs);
-
-	cv::imshow("ClassifiedImage", classifiedImage);
+	PrintMat(classifiedImage);
+	cv::imshow("ClassifiedImage", 63 * classifiedImage);
+	cv::imshow("ClassifiedImageBase", 63 * TrainingMask);
+	cv::waitKey();
 	float accuracy = ConfusionMatrix(TrainingMask, classifiedImage);
 
 	std::cout << "Accuracy of classifier: " << accuracy;
@@ -154,7 +220,9 @@ float ComputeQFeature(cv::Mat GLCM, size_t start_x_t, size_t end_x_t, size_t sta
 //Compute subGLCM features.
 std::vector<float> ComputeQFeatures(std::vector<cv::Mat> GLCMs)
 {
-	std::vector<float> Qs;
+	std::vector<float> Qs(8, 0);
+
+
 	for (size_t i = 0; i < GLCMs.size(); i++) {
 		cv::Mat GLCM = GLCMs[i];
 		size_t width_t = GLCM.cols;
@@ -173,11 +241,16 @@ std::vector<float> ComputeQFeatures(std::vector<cv::Mat> GLCMs)
 				size_t startX = wStep*j, endX = wStep + wStep*j, startY = hStep*u, endY = hStep + hStep*u;
 
 				float Q = ComputeQFeature(GLCM, startX, endX, startY, endY);
-				Qs.push_back(Q);
+				Qs[qIndex + 4* i] += Q;
 				qIndex++;
 			}
 		}
 	}
+	Qs[2] = Qs[3];
+	Qs[3] = Qs[4];
+	Qs[4] = Qs[5];
+	Qs[5] = Qs[7];
+	Qs.resize(6);
 	return Qs;
 }
 
@@ -205,7 +278,7 @@ std::vector<cv::Mat> ComputeGLCM(const cv::Mat& Img, std::vector<int> XYOffsets)
 				size_t GrayLevelTarget = dst.at<uchar>(cv::Point(y + deltaY, x + deltaX));
 
 				GLCMs[i/2].at<float>(GrayLevelBase, GrayLevelTarget) += 1;
-				//GLCMs[i/2].at<float>(GrayLevelTarget, GrayLevelBase) += 1;
+				GLCMs[i/2].at<float>(GrayLevelTarget, GrayLevelBase) += 1;
 				TotalMeasurements = TotalMeasurements + 1;
 			}
 		}
@@ -287,7 +360,8 @@ std::vector<ClassDescriptor> ComputeClassDescriptors(std::vector<cv::Mat>& featu
 std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffsets)
 {
 	std::vector<cv::Mat> QFeatureIms;
-	for (size_t i = 0; i < (XYOffsets.size() / 2) * 3; i++) {
+	int numFeatureImgs = 6;
+	for (size_t i = 0; i < numFeatureImgs; i++) {
 		QFeatureIms.push_back(cv::Mat(Img.rows, Img.cols, CV_32F));
 	}
 	for (size_t i = 0; i < QFeatureIms.size(); i++)
@@ -314,7 +388,7 @@ std::vector<cv::Mat> ComputeQFeatureImgs(cv::Mat& Img, std::vector<int> XYOffset
 			std::vector<float> QFeats = ComputeQFeatures(GLCMs);
 
 			//For every computed Q feature set the pixel on the matching Q feature image.
-			for (size_t i = 0; i < QFeatureIms.size(); i++) {
+			for (size_t i = 0; i < QFeats.size(); i++) {
 				float value = QFeats[i];
 				cv::Mat currentFeatureImg = QFeatureIms[i];
 				currentFeatureImg.at<float>(y + 1 + (WindowSize / 2), x + 1 + (WindowSize / 2)) = value;
@@ -361,32 +435,33 @@ cv::Mat getPixelDescriptor(std::vector<cv::Mat>& featureImgs, size_t y, size_t x
 	return descriptor;
 }
 
-std::vector<std::vector<std::vector<float>>> computeSamples(cv::Mat& mask, std::vector<cv::Mat>& featureImgs)
+std::vector<float> GetSamplesForClass(cv::Mat& mask, cv::Mat& featureImg, int classID)
 {
-	std::vector<std::vector<std::vector<float>>> samples;
-
-	std::vector<std::vector<float>> samplesForClass(featureImgs.size());
-
-	//For every class
-	int numClasses = 5;
-	for (size_t i = 0; i < numClasses; i++)
-	{
-		samplesForClass.clear();
-		samplesForClass.resize(featureImgs.size());
-		//Find every pixel for that class.
-		for (size_t y = 0; y < mask.rows; y++)
-		{
-			for (size_t x = 0; x < mask.cols; x++)
-			{
-				if (mask.at<uchar>(y, x) == i) {
-					//Add the value of each feature image at that pixel.
-					for (size_t feat_index_t = 0; feat_index_t < featureImgs.size(); feat_index_t++) {
-						samplesForClass[0].push_back(featureImgs[feat_index_t].at<float>(y, x));
-					}
-				}
+	std::vector<float> samples;
+	for (size_t y = 0; y < mask.rows; y++) {
+		for (size_t x = 0; x < mask.cols; x++) {
+			if (mask.at<uchar>(y, x) == classID) {
+				samples.push_back(featureImg.at<float>(y, x));
 			}
 		}
-		samples.push_back(samplesForClass);
+	}
+	return samples;
+}
+
+std::vector<std::vector<std::vector<float>>> computeSamples(cv::Mat& mask, std::vector<cv::Mat>& featureImgs)
+{
+
+	//The samples should be 4 classes * 3 discriminating features * 10 samples long.
+	typedef  std::vector < float > FeatSamplesForClass;
+	typedef  std::vector < FeatSamplesForClass > AllFeatSamplesForClass;
+	std::vector<AllFeatSamplesForClass> samples;
+
+	for (size_t classID = 0; classID < 4; classID++) {
+		AllFeatSamplesForClass classFeatures;
+		for (size_t j = 0; j < featureImgs.size(); j++) {
+			classFeatures.push_back(GetSamplesForClass(mask, featureImgs[j], classID));
+		}
+		samples.push_back(classFeatures);
 	}
 
 	return samples;
